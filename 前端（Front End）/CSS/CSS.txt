@@ -1,0 +1,22 @@
+CSS 做出阴影效果
+box-shadow: x-shadow y-shadow blur spread color inset;
+x-shadow: 必需的，水平阴影的偏移量，可以为负值
+y-shadow: 必需的，水平阴影的偏移量，可以为负值
+blur: 可选的，模糊距离，不支持负数
+spread: 可选的，阴影的扩展半径
+color：可选的，颜色值
+inset：可选的，内阴影
+
+div定位
+position: relative;
+top:150px;
+left:150px ;
+相对定位使相对于原来的位置对块标签进行设置，块标签的位置移动之后，原有位置不被释放，不能被其他块占用
+
+文字居中
+text-align: center;
+
+设置圆角
+    border-radius: 30px;
+去除ul的点
+list-style:none
