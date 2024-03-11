@@ -321,7 +321,7 @@ button1.setOnClickListener {
 
 `Activity` 如下：
 
-
+![Second_Activity](./img/Second_Activity.png)
 
 我们一般使用 `Intent` 来实现不同的 `Activity` 相互转换， 虽然 `Intent` 的功能不止于此， 但是我们现在就只关注 `Activity` 的转换
 
@@ -351,3 +351,564 @@ button1.setOnClickListener {
 隐式 `Intent` 是通过注册时候的 `action` 和 `category` 来确定跳转到哪一个 `Activity` 的
 
 我们创建一个 `ThirdActivity` , 和 `SecondActivity` 一样但是按钮变成了 `button3`
+
+我们在 `AndroidManifest` 中注册 `SecondActivity` 的部分增加下面的配置
+
+```xml
+<intent-filter>
+    <action android:name="com.example.activities.ACTION_START" />
+    <category android:name="android.intent.category.DEFAULT" />
+</intent-filter>
+```
+
+之后我们修改点击 `bottom1` 后的响应逻辑 : 
+
+```kotlin
+button1.setOnClickListener {
+    val intent = Intent("com.example.activities.ACTION_START")
+    startActivity(intent)
+}
+```
+
+在标签中我们指明了当前 `Activity` 可以响应 `com.example.activities.ACTION_START` 这个 `action` ，而标签则包含了 一些附加信息，更精确地指明了当前 `Activity` 能够响应的 `Intent` 中还可能带有的 `category` 。只 有和中的内容同时匹配 `Intent` 中指定的 `action` 和 `category` 时，这个 `Activity` 才能响应该 `Intent`。
+
+默认的 `category` 是 `android.intent.category.DEFAULT` , 如果 `intent` 发现没有匹配上的 `action` 和 `category` 就会报错
+
+每个 `Intent` 中只能指定一个 `action` ，但能指定多个 `category`
+
+
+
+#### 隐式 Intent 的更多用法
+
+使用 `Intent` 可以打开其他应用的 `Activity`
+
+* **打开浏览器界面**
+
+```kotlin
+button1.setOnClickListener {
+    val intent = Intent(Intent.ACTION_VIEW)
+    intent.data = Uri.parse("https://www.baidu.com")
+    startActivity(intent)
+}
+```
+
+我们首先指定了 `Intent` 的 `action` 是 `Intent.ACTION_VIEW` ，这是一个 `Android` 系统内置 的动作，其常量值为 `android.intent.action.VIEW` 。然后通过 `Uri.parse()` 方法将一个 网址字符串解析成一个 `Uri` 对象，再调用 `Intent` 的 `setData()` 方法将这个Uri对象传递进去
+
+
+
+我们同时也可以自己书写一个 `Activity` 来响应, 我们同时也可以设置 `data` 属性
+
+> `data` 属性可以配置以下内容 : 
+>
+> * android:scheme。用于指定数据的协议部分，如上例中的https部分。
+> * android:host。用于指定数据的主机名部分，如上例中的www.baidu.com部分。
+> * android:port。用于指定数据的端口部分，一般紧随在主机名之后。
+> * android:path。用于指定主机名和端口之后的部分，如一段网址中跟在域名之后的内 容。'
+> * android:mimeType。用于指定可以处理的数据类型，允许使用通配符的方式进行指定
+
+我们自己建立一个 `Activity` 试着相应一下 :
+
+这个 `Activity` 起名叫 `WebActivity` , 注册的配置如下 : 
+
+```xml
+<activity
+          android:name=".WebActivity"
+          android:exported="false">
+    <meta-data
+               android:name="android.app.lib_name"
+               android:value="" />
+
+    <intent-filter tools:ignore="AppLinkUrlError">
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <data android:scheme="https" />
+    </intent-filter>
+
+</activity>
+```
+
+
+
+之后我们点击按钮就会弹出选项　：　
+
+![Active_web](./img/Active_web.png)
+
+
+
+* **打开系统拨号页面**
+
+同理, 我们修改按下 `buttom1` 的逻辑
+
+```kotlin
+button1.setOnClickListener {
+    val intent = Intent(Intent.ACTION_DIAL)
+    intent.data = Uri.parse("tel:10086")
+    startActivity(intent)
+}
+```
+
+按下后就会打开页面 : 
+
+![phone_activity](./img/phone_activity.png)
+
+
+
+## 在 Activity 中传递信息
+
+### 向下一个 Intent 传递信息
+
+我们使用 `intent` 不仅可以跳转到另一个页面, 同时可以向下一个 `Activity` 传递信息
+
+我们使用 `putExtra()` 方法实现传递信息的功能, 这里 `putExtra()` 方法接收两个参数，第一个参数是键，用于之后从 `Intent` 中取值，第二个参数才是真正要传递的数据
+
+```kotlin
+button1.setOnClickListener {
+    val message = "Hello SecondActivity"
+    val intent = Intent(this, SecondActivity::class.java)
+    intent.putExtra("mess", message)
+    startActivity(intent)
+}
+```
+
+之后我们在 `SecondActivity` 中接收信息
+
+```kotlin
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    setContentView(R.layout.activity_second)
+
+    val message = intent.getStringExtra("mess")
+    Toast.makeText(this, "put message is $message", Toast.LENGTH_SHORT).show()
+}
+```
+
+上述代码中的 `intent` 实际上调用的是父类的 `getIntent()` 方法，该方法会获取用于启动 `SecondActivity`的`Intent`
+
+
+
+### 向上一个 Intent 传递信息
+
+实现这个功能有点特殊, 正常情况下, 我们会使用 `startActivity()` 方法来跳转到另一个 `Activity`, 但是如果我们希望下一个 `Intent` 能返回内容给上一个 `Intent` , 那我们就要用另一个函数 `startActivityForResult()` 
+
+`startActivityForResult()` 方法接收两个参数：第一个参数还是 `Intent` ；第二个参数是请求码，用于在之后的回调中判断数据的来源, 请求码只要是一 个唯一值即可
+
+```kotlin
+button1.setOnClickListener {
+    val intent = Intent(this, SecondActivity::class.java)
+    startActivityForResult(intent, 1)
+}
+```
+
+接下来我们在 `SecondActivity` 中给按钮注册点击事件，并在点击事件中添加返回数据的逻辑
+
+```kotlin
+button2.setOnClickListener {
+    val intent = Intent(this, MainActivity::class.java)
+    val message = "back to Main"
+    intent.putExtra("return", message)
+    setResult(RESULT_OK, intent)
+    finish()
+}
+```
+
+`setResult()` 方法接收两个参数：第一个参数用于向上一个 `Activity` 返回处理结果，一般只使用 `RESULT_OK` 或 `RESULT_CANCELED` 这 两个值；第二个参数则把带有数据的 `Intent` 传递回去。
+
+之后我们在 `MainActivity` 中来接收数据
+
+```kotlin
+override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    super.onActivityResult(requestCode, resultCode, data)
+    when (requestCode) {
+        1 -> if (resultCode == RESULT_OK) {
+            val returnedData = data?.getStringExtra("return")
+            Toast.makeText(this, returnedData, Toast.LENGTH_SHORT).show()
+        }
+    }
+}
+```
+
+`onActivityResult()` 方法带有3个参数：第一个参数`requestCode`，即我们在启动`Activity`时传入的请求码；第二个参数 `resultCode` ，即我们在返回数据时传入的处理结果；第三个参数 `data`，即携带着返回数据的`Intent`。
+
+由于在一个`Activity` 中有可能调用 `startActivityForResult()` 方法去启动很多不同的 `Activity`，每一个 `Activity` 返回的数据都 会回调到 `onActivityResult()` 这个方法中，因此我们首先要做的就是通过检查 `requestCode` 的值来判断数据来源。确定数据是从`SecondActivity`返回的之后，我们再通过 `resultCode` 的值来判断处理结果是否成功
+
+
+
+如果用户是按下 返回键退出的 `Activity` , 处理方式也很简单, 只需要重写 `onBackPressed()` 方法就可以解决这个问题
+
+```kotlin
+override fun onBackPressed() { 
+    val intent = Intent() 
+    intent.putExtra("data_return", "Hello FirstActivity") 
+    setResult(RESULT_OK, intent) 
+    finish() 
+} 
+```
+
+> 注意, 实际上 `startActivityForResult()` 等一系列方法已经给安卓官方标为弃用, 现在是使用 `Activity Result API`的组件
+
+
+
+## Activity 的生命周期
+
+我们发现, 我们每启动一个新的 `Activity` ，就会覆盖在原 `Activity` 之上，然后点击 `Back` 键会销毁最上面的 `Activity`，下面的 一个 `Activity ` 就会重新显示出来
+
+而这一切都是由返回栈来管理的
+
+![returnStack](./img/returnStack.png)
+
+### Activity 的状态
+
+每个`Activity` 在其生命周期中最多可能会有4种状态。
+
+* **运行状态**
+
+  > 当一个 `Activity` 位于返回栈的栈顶时，`Activity` 就处于运行状态。系统最不愿意回收的就是处于运行状态的 `Activity`，因为这会带来非常差的用户体验。
+
+* **暂停状态**
+
+  > 当一个 `Activity` 不再处于栈顶位置，**但仍然可见时**，`Activity` 就进入了暂停状态。你可能会 觉得，既然 `Activity` 已经不在栈顶了，怎么会可见呢？这是因为并不是每一个 `Activity` 都会占满整个屏幕，比如对话框形式的 `Activity` 只会占用屏幕中间的部分区域。处于暂停状态的 `Activity` 仍然是完全存活着的，系统也不愿意回收这种 `Activity`（因为它还是可见的，回收 可见的东西都会在用户体验方面有不好的影响），只有在内存极低的情况下，系统才会去考虑回收这种 `Activity`。
+
+* **停止状态**
+
+  > 当一个 `Activity` 不再处于栈顶位置，**并且完全不可见的时候**，就进入了停止状态。系统仍然会为这种`Activity` 保存相应的状态和成员变量，但是这并不是完全可靠的，当其他地方需要内存时，处于停止状态的 `Activity` 有可能会被系统回收。
+
+* **销毁状态**
+
+  > 一个 `Activity` 从返回栈中移除后就变成了销毁状态。系统最倾向于回收处于这种状态的 `Activity`，以保证手机的内存充足。
+
+
+
+### Activity 的生存期
+
+`Activity` 类中定义了7个回调方法，覆盖了`Activity`生命周期的每一个环节
+
+* `onCreate()`
+
+  > 这个方法你已经看到过很多次了，我们在每个 `Activity` 中都重写了这个方 法，它会在 `Activity` 第一次被创建的时候调用。你应该在这个方法中完成 `Activity` 的初始化 操作，比如加载布局、绑定事件等
+
+* `onStart()`
+
+  > 这个方法在 `Activity` 由不可见变为可见的时候调用
+
+* `onPause()`
+
+  > 这个方法在系统准备去启动或者恢复另一个 `Activity` 的时候调用。我们通常会在这个方法中将一些消耗CPU的资源释放掉，以及保存一些关键数据，但这个方法的执行速度一定要快，不然会影响到新的栈顶`Activity`的使用
+
+* `onStop()`
+
+  > 这个方法在 `Activity` 完全不可见的时候调用。它和 `onPause()` 方法的主要区别在于，如果启动的新`Activity` 是一个对话框式的 `Activity`，那么 `onPause()` 方法会得到执 行，而 `onStop()` 方法并不会执行
+
+* `onDestroy()`
+
+  > 这个方法在 `Activity` 被销毁之前调用，之后 `Activity` 的状态将变为销毁状态。
+
+* `onRestart()`
+
+  > 这个方法在 `Activity` 由停止状态变为运行状态之前调用，也就是 `Activity` 被重新启动了
+
+![lefeRange](./img/lefeRange.png)
+
+### 处理 Activity 被回收的情况
+
+当一个 `Activity` 被回收后, 其中的数据都被销毁了, 我们有些时候希望保留这些数据, ，`Activity` 中还提供了一个 `onSaveInstanceState()` 回调方法，这个方法可以保证在 `Activity` 被回收之前一定会被调用，因此我们可以通过这个方法来解决问题
+
+`onSaveInstanceState()` 方法会携带一个 `Bundle` 类型的参数，`Bundle`提供了一系列的方法 用于保存数据，比如可以使用 `putString()` 方法保存字符串，使用 `putInt()` 方法保存整型数 据，以此类推。每个保存方法需要传入两个参数，第一个参数是键，用于后面从 `Bundle` 中取 值，第二个参数是真正要保存的内容
+
+```kotlin
+override fun onSaveInstanceState(outState: Bundle) { 
+    super.onSaveInstanceState(outState) 
+    val tempData = "Something you just typed" 
+    outState.putString("data_key", tempData) 
+} 
+```
+
+之后我们在 `onCreate()` 中取值即可
+
+```kotlin
+override fun onCreate(savedInstanceState: Bundle?) { 
+    super.onCreate(savedInstanceState) 
+    setContentView(R.layout.activity_main) 
+    if (savedInstanceState != null) { 
+        val tempData = savedInstanceState.getString("data_key") 
+        Log.d(tag, "tempData is $tempData") 
+    } 
+} 
+```
+
+PS : ，`Intent` 还可以结合 `Bundle` 一起用于传递 数据。首先我们可以把需要传递的数据都保存在 `Bundle` 对象中，然后再将 `Bundle` 对象存放在 `Intent` 里。到了目标 `Activity` 之后，先从 `Intent` 中取出 `Bundle`，再从`Bundle` 中一一取出数据
+
+
+
+## Activity 的启动模式
+
+启动模式一共有4种，分别是 `standard` 、`singleTop` 、 `singleTask` 和 `singleInstance` ，可以在`AndroidManifest.xml`中通过给标签指定 `android:launchMode`属性来选择启动模式。
+
+
+
+### standard
+
+ `standard` 是 `Activity` 默认的启动模式，在不进行显式指定的情况下，所有 `Activity` 都会自动使用这种启动模式。
+
+在 `standard`模式下，每当启动一个新的 `Activity` ，它就会在返回栈中入栈，并处于栈顶的位置。对于使用`standard` 模式的 `Activity`，系统不会在乎这个 `Activity`是否已经在返回栈中存在，每次启动都会创建一个该 `Activity` 的新实例
+
+![standardReturnStack](./img/standardReturnStack.png)
+
+
+
+### singleTop
+
+当 `Activity` 的启动模式指 定为 `singleTop` ，在启动 `Activity` 时如果发现返回栈的栈顶已经是该 `Activity`，则认为可以直接使用它，不会再创建新的Activity实例。
+
+![singleTopReturnStack](./img/singleTopReturnStack.png)
+
+如果是 $1\Rightarrow 2 \Rightarrow 1 \Rightarrow 2$ 这种模式创建的话, 那么 `singleTop` 和 `Standard` 的返回栈是一样的
+
+
+
+### singleTask
+
+当 `Activity` 的启动模式指定为 `singleTask` ，每次启动该 `Activity` 时， 系统首先会在返回栈中检查是否存在该 `Activity` 的实例，如果发现已经存在则直接使用该实例， 并把在这个 `Activity` 之上的所有其他 `Activity`统统出栈，如果没有发现就会创建一个新的 `Activity` 实例。
+
+![singleTaskReturnStack](./img/singleTaskReturnStack.png)
+
+### singleInstance
+
+ `Activity`是允许其他程序调用的，如果想实现其他程序和我们的程序可以共享这个`Activity`的实例, 我们就需要设置为 `singleInstance` 模式
+
+在这种模式下，会有一个单独的返回栈来管理这个 `Activity` ，不管是哪个应用程序来访问这个`Activity`，都共用同一个返回栈，也就解决了共享 `Activity`实例的问题
+
+![singleInstanceReturnStack](./img/singleInstanceReturnStack.png)
+
+
+
+## Android 开发技巧
+
+### 一次性退出所有 Activity
+
+我们可以使用一个单例类来管理 `Activity` 的启动和销毁, 这样方便我们实现不同的需求
+
+```kotlin
+object ActivityCollector { 
+    private val activities = ArrayList<Activity>() 
+    fun addActivity(activity: Activity) = activities.add(activity)
+    
+    fun removeActivity(activity: Activity) = activities.remove(activity) 
+    
+    fun finishAll() { 
+        for (activity in activities) { 
+            if (!activity.isFinishing)
+                activity.finish() 
+        } 
+        activities.clear() 
+    } 
+} 
+```
+
+
+
+### 启动Activity 的最佳写法
+
+当我们需要启动另一个 `Activity` 的时候, 往往需要传递其他的参数或者信息, 但如果你要传的参数过多过杂, 当其他开发人员想要查看相应的信息的时候, 未免会十分困难, 所以我们需要明确我们要传递的参数, 让其他开发者更加易懂
+
+我们在我们写的 `Activity` 中定义一个静态方法 (语法会在接下来讲)
+
+```kotlin
+class SecondActivity : BaseActivity() { 
+    ... 
+    companion object { 
+        fun actionStart(context: Context, data1: String, data2: String) { 
+            val intent = Intent(context, SecondActivity::class.java) 
+            intent.putExtra("param1", data1) 
+            intent.putExtra("param2", data2) 
+            context.startActivity(intent) 
+        } 
+    } 
+} 
+```
+
+这样当其他的 `Activity` 想要调用这个 `SecondActivity` 的时候就只需要一段代码了
+
+```kotlin
+button1.setOnClickListener { 
+    SecondActivity.actionStart(this, "data1", "data2") 
+} 
+```
+
+
+
+##  Kotlin 进阶教学
+
+### 标准函数 `with` 、`run` 和 `apply`
+
+`Kotlin` 的标准函数指的是 `Standard.kt` 文件中定义的函数，任何 `Kotlin` 代码都可以自由地调用所有的标准函数
+
+**我们先来讲解 `with` 函数**
+
+```kotlin
+val result = with(obj) { 
+    // 这里是obj的上下文 
+    "value" // with函数的返回值 
+} 
+```
+
+我们以这段代码为例子 : 
+
+```kotlin
+val list = listOf("Apple", "Banana", "Orange", "Pear", "Grape") 
+val builder = StringBuilder() 
+builder.append("Start eating fruits.\n") 
+for (fruit in list) { 
+    builder.append(fruit).append("\n") 
+} 
+builder.append("Ate all fruits.") 
+val result = builder.toString()
+```
+
+我们发现, 我们多次使用 `builder` 的方法, 这样我们就可以使用 `with` 来简化
+
+```kotlin
+val list = listOf("Apple", "Banana", "Orange", "Pear", "Grape") 
+val result = with(StringBuilder()) { 
+    append("Start eating fruits.\n") 
+    for (fruit in list) { 
+        append(fruit).append("\n") 
+    } 
+    append("Ate all fruits.") 
+    toString() 
+} 
+```
+
+我们发现, 使用 `with` 我们就把 `builder` 给省略了 , 同时 `Lambda` 表达式的最后一行代码会作为 `with` 函数的返回值返回
+
+**我们再来讲解 `run` 函数**
+
+```kotlin
+val result = obj.run { 
+    // 这里是obj的上下文 
+    "value" // run函数的返回值 
+} 
+```
+
+其实功能和 `with` 相同, 只不过写法不同, 我们将上述 `with` 代码改成 `run` 代码
+
+```kotlin
+val list = listOf("Apple", "Banana", "Orange", "Pear", "Grape") 
+val result = StringBuilder().run { 
+    append("Start eating fruits.\n") 
+    for (fruit in list) {
+        append(fruit).append("\n") 
+    } 
+    append("Ate all fruits.") 
+    toString() 
+}
+```
+
+**我们最后讲解一下 `apply` 函数**
+
+这个函数和前面的两种非常相似, 仅有一点不同
+
+`apply` 函数无法指定返回值，而是会自动返回调用对象本身
+
+```kotlin
+val result = obj.apply { 
+     // 这里是obj的上下文 
+} 
+// result == obj 
+```
+
+所以上面的代码可以改为 :
+
+```kotlin
+val list = listOf("Apple", "Banana", "Orange", "Pear", "Grape") 
+val result = StringBuilder().apply { 
+    append("Start eating fruits.\n") 
+    for (fruit in list) { 
+        append(fruit).append("\n") 
+    } 
+    append("Ate all fruits.") 
+} //result 是 StringBuilder 类型
+println(result.toString()) 
+```
+
+
+
+### 定义静态方法
+
+当我们想要通过类名直接访问一个方法的时候 [`class.method()`] , 我们有下面的几种方法
+
+* 使用单例类来实现
+
+```kotlin
+object Util {
+    fun method() = println("Hello Util")
+}
+```
+
+> 这种实现机制实际上不是静态方法
+
+* 使用 `companion`
+
+```kotlin
+class Util { 
+    fun method1() = println("method1") 
+    
+    companion object { 
+        fun method2() = println("method2") 
+    } 
+ 
+} 
+```
+
+`companion` 里面的函数可以直接使用类名调用
+
+> 这种实现机制实际上不是静态方法
+>
+> `companion object` 这个关键字实际上会 在 `Util` 类的内部创建一个伴生类，而 `method2()` 方法就是定义在这个伴生类里面的实例方法。只是 `Kotlin` 会保证 `Util` 类始终只会存在一个伴生类对象，因此调用 `Util.method2()` 方法实际上就是调用了 `Util`类中伴生对象的 `method2()`方法
+
+* 使用 `companion` + `@JvmStatic` 注解
+
+```kotlin
+class Util { 
+    fun method1() = println("method1") 
+    
+    companion object { 
+        @JvmStatic
+        fun method2() = println("method2") 
+    } 
+ 
+} 
+```
+
+> 这是真正的静态方法
+
+* 使用顶层方法
+
+顶层方法指的是那些没有定义在任何类中的方法，比如我们的 `main()` 方法。`Kotlin` 编译器会将所有的顶层方法全部编译成静态方法，因此只要你定义了一 个顶层方法，那么它就一定是静态方法
+
+> 所谓顶层方法, 也就是我们平常定义的函数罢了
+
+
+
+> #### 补充
+
+**静态方法和类方法的区别**
+
+**静态方法**：
+
+- 静态方法是类的一部分，但不依赖于类的状态。它们基本上就是普通的函数。
+- 静态方法的调用效率较高，因为它们不需要访问类或实例的状态。
+- 在编译时，静态方法的地址已经确定，因此调用时不需要额外的查找或解析步骤
+
+**类方法**：
+
+- 类方法可以访问类的变量，并且第一个参数为类本身（通常命名为`cls`）。
+- 类方法的调用效率相对较低，因为它们需要在运行时查找类的定义并传递类对象作为参数。
+- 在调用类方法时，需要额外的解析步骤，以确定类的位置和方法的地址。
+
+
+
+静态方法的效率更高，因为它们不需要访问类或实例的状态，且在编译时已确定地址。
+
+类方法的效率较低，因为它们需要在运行时查找类的定义并传递类对象作为参数
+
+需要注意的是，这些差异通常在微观层面上才会显著，而在大多数应用程序中，这些差异不太会对性能产生重大影响。因此，选择使用哪种方法应该更多地基于代码的可读性和设计需求
