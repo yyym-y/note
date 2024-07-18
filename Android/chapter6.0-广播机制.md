@@ -142,3 +142,151 @@ class BootCompleteReceiver : BroadcastReceiver() {
 
 
 > 需要注意的是，不要在 `onReceive()` 方法中添加过多的逻辑或者进行任何的耗时操作，因为 `BroadcastReceiver` 中是不允许开启线程的，当 `onReceive()` 方法运行了较长时间而没有结束时，程序就会出现错误
+
+
+
+## 发送自定义广播
+
+### 发送标准广播
+
+我们需要先定义一个我们自己的广播接收程序：
+
+```kotlin
+class MyReceiver : BroadcastReceiver() {
+
+    override fun onReceive(context: Context, intent: Intent) {
+        Toast.makeText(context, "receive my Broadcast", Toast.LENGTH_SHORT).show()
+    }
+}
+```
+
+之后我们在 `AndroidManifest.xml` 中进行注册：
+
+```xml
+<receiver
+	android:name=".MyReceiver"
+	android:enabled="true"
+	android:exported="true">
+	<intent-filter>
+		<action android:name="org.yyym.broadcastTest.MY_BROADCAST" />
+	</intent-filter>
+</receiver>
+```
+
+这样， `MyReceiver` 就会接受一个 `org.yyym.broadcastTest.MY_BROADCAST` 的广播了
+
+之后我们在 `MainActivity` 中加入一个按钮点击的逻辑用来产生广播
+
+```kotlin
+class MainActivity : AppCompatActivity() {
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        val button : Button = findViewById(R.id.sendBroadcast)
+        button.setOnClickListener {
+            val intent = Intent("org.yyym.broadcastTest.MY_BROADCAST")
+            intent.setPackage(packageName)
+            sendBroadcast(intent)
+        }
+    }
+}
+```
+
+我们首先构建了一个 `Intent` 对象，并把要发送的广播的值传入。然后调用 `Intent` 的 `setPackage()` 方法，并传入当前应用程序的包名。
+
+`packageName` 是 `getPackageName()` 的语法糖写法，用于获取当前应用程序的包名。
+
+最后调用 `sendBroadcast()` 方法将广播发送出去，这样所有监听 `com.example.broadcasttest.MY_BROADCAST` 这条广播的`BroadcastReceiver` 就会收到消息了。此时发出去的广播就是一条标准广播。
+
+ 这里我还得对第2步调用的 `setPackage()` 方法进行更详细的说明。前面已经说过，在 `Android 8.0` 系统之后，静态注册的`BroadcastReceiver` 是无法接收隐式广播的，而默认情况下我们发出的自定义广播恰恰都是隐式广播。因此这里一定要调用`setPackage()` 方法，指定这条广播是发送给哪个应用程序的，从而让它变成一条显式广播，否则静态注册的 `BroadcastReceiver` 将 无法接收到这条广播
+
+
+
+### 发送有序广播
+
+和标准广播不同，有序广播是一种同步执行的广播，并且是可以被截断的
+
+我们再建立一个广播接收器
+
+```kotlin
+class AnotherReceiver : BroadcastReceiver() {
+
+    override fun onReceive(context: Context, intent: Intent) {
+        Toast.makeText(context, "This is another receiver", Toast.LENGTH_SHORT).show()
+    }
+}
+```
+
+同时修改 xml 的配置让它能够接受 `org.yyym.broadcastTest.MY_BROADCAST` 广播
+
+```xml
+<receiver
+	android:name=".AnotherReceiver"
+	android:enabled="true"
+	android:exported="true">
+    <intent-filter>
+        <action android:name="org.yyym.broadcastTest.MY_BROADCAST" />
+    </intent-filter>
+</receiver>
+```
+
+如果此时运行应用, 将会受到两个 Toast 消息, 因为我们之前讲的发送方法发送的是标准广播
+
+接下来我们将标准广播改成有序广播
+
+我们只需要将 `sendBroadcast()` 改成 `sendOrderedBroadcast()` 即可, 如下:
+
+```kotlin
+class MainActivity : AppCompatActivity() {
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        val button : Button = findViewById(R.id.sendBroadcast)
+        button.setOnClickListener {
+            val intent = Intent("org.yyym.broadcastTest.MY_BROADCAST")
+            intent.setPackage(packageName)
+            sendOrderedBroadcast(intent, null)
+        }
+    }
+}
+```
+
+`sendOrderedBroadcast()` 方法接收两个参数：第一个 参数仍然是Intent；第二个参数是一个与权限相关的字符串，这里传入null就行了
+
+那么该如何设定 `BroadcastReceiver` 的先后顺序呢？当然是在注册的时候进行设定了，修改 AndroidManifest.xml中的代码，如下所示：
+
+```xml
+<receiver
+	android:name=".AnotherReceiver"
+	android:enabled="true"
+	android:exported="true">
+    <intent-filter android:priority="100">
+        <action android:name="org.yyym.broadcastTest.MY_BROADCAST" />
+    </intent-filter>
+</receiver>
+```
+
+我们通过 `android:priority` 属性给 `BroadcastReceiver` 设置了优先级，优先级比较高的 `BroadcastReceiver`就可以先收到广播
+
+既然已经获得了接收广播的优先权，那么MyBroadcastReceiver就可以选择是否允许广播继续 传递了
+
+```kotlin
+class AnotherReceiver : BroadcastReceiver() {
+
+    override fun onReceive(context: Context, intent: Intent) {
+        Toast.makeText(context, "This is another receiver", Toast.LENGTH_SHORT).show()
+        abortBroadcast() // 截断广播
+    }
+}
+```
+
+之后我们就只能收到一个Receiver的回应了
+
+
+
+## kotlin-进阶教学
+

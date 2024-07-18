@@ -46,7 +46,7 @@ echo $y; // 输出 15
 ?>
 ```
 
-PHP 将所有全局变量存储在一个名为 `$GLOBALS[*index*]` 的数组中。 *index* 保存变量的名称。这个数组可以在函数内部访问，也可以直接用来更新全局变量。
+PHP 将所有全局变量存储在一个名为 `$GLOBALS[index]` 的数组中。 *index* 保存变量的名称。这个数组可以在函数内部访问，也可以直接用来更新全局变量。
 
 ```php
 <?php
@@ -567,3 +567,157 @@ $o->sayHello();
 ?>
 ```
 
+
+
+## 命名空间
+
+PHP 命名空间(namespace)是在 PHP 5.3 中加入的，目的是解决重名问题，PHP中不允许两个函数或者类出现相同的名字，否则会产生一个致命的错误。
+
+PHP 命名空间可以解决以下两类问题：
+
+1. 用户编写的代码与PHP内部的类/函数/常量或第三方类/函数/常量之间的名字冲突。
+2. 为很长的标识符名称(通常是为了缓解第一类问题而定义的)创建一个别名（或简短）的名称，提高源代码的可读性。
+
+### 定义命名空间
+
+默认情况下，所有常量、类和函数名都放在全局空间下，就和PHP支持命名空间之前一样。
+
+命名空间通过关键字namespace 来声明。如果一个文件中包含命名空间，它必须在其它所有代码之前声明命名空间。
+
+语法格式如下:
+
+```php
+<?php  
+// 定义代码在 'MyProject' 命名空间中  
+namespace MyProject;  
+ 
+// ... 代码 ...  
+```
+
+你也可以在同一个文件中定义不同的命名空间代码，如：
+
+```php
+<?php  
+namespace MyProject;
+
+const CONNECT_OK = 1;
+class Connection { /* ... */ }
+function connect() { /* ... */  }
+
+namespace AnotherProject;
+
+const CONNECT_OK = 1;
+class Connection { /* ... */ }
+function connect() { /* ... */  }
+?>  
+```
+
+不建议使用这种语法在单个文件中定义多个命名空间。建议使用下面的大括号形式的语法。
+
+```php
+<?php
+namespace MyProject {
+    const CONNECT_OK = 1;
+    class Connection { /* ... */ }
+    function connect() { /* ... */  }
+}
+
+namespace AnotherProject {
+    const CONNECT_OK = 1;
+    class Connection { /* ... */ }
+    function connect() { /* ... */  }
+}
+?>
+```
+
+将全局的非命名空间中的代码与命名空间中的代码组合在一起，只能使用大括号形式的语法。全局代码必须用一个不带名称的 namespace 语句加上大括号括起来，例如：
+
+```php
+<?php
+namespace MyProject {
+
+const CONNECT_OK = 1;
+class Connection { /* ... */ }
+function connect() { /* ... */  }
+}
+
+namespace { // 全局代码
+session_start();
+$a = MyProject\connect();
+echo MyProject\Connection::start();
+}
+?>
+```
+
+在声明命名空间之前唯一合法的代码是用于定义源文件编码方式的 declare 语句。所有非 PHP 代码包括空白符都不能出现在命名空间的声明之前。
+
+```php
+<?php
+declare(encoding='UTF-8'); //定义多个命名空间和不包含在命名空间中的代码
+namespace MyProject {
+
+const CONNECT_OK = 1;
+class Connection { /* ... */ }
+function connect() { /* ... */  }
+}
+
+namespace { // 全局代码
+session_start();
+$a = MyProject\connect();
+echo MyProject\Connection::start();
+}
+?>
+```
+
+以下代码会出现语法错误：
+
+```php
+<html>
+<?php
+namespace MyProject; // 命名空间前出现了“<html>” 会致命错误 -　命名空间必须是程序脚本的第一条语句
+?>
+```
+
+### 子命名空间
+
+与目录和文件的关系很像，PHP 命名空间也允许指定层次化的命名空间的名称。因此，命名空间的名字可以使用分层次的方式定义：
+
+```php
+<?php
+namespace MyProject\Sub\Level;  //声明分层次的单个命名空间
+
+const CONNECT_OK = 1;
+class Connection { /* ... */ }
+function Connect() { /* ... */  }
+
+?>
+```
+
+上面的例子创建了常量 MyProject\Sub\Level\CONNECT_OK，类 MyProject\Sub\Level\Connection 和函数 MyProject\Sub\Level\Connect。
+
+## php 面向对象
+
+## PHP 类定义
+
+PHP 定义类通常语法格式如下：
+
+```php
+<?php
+class phpClass {
+  var $var1;
+  var $var2 = "constant string";
+  
+  function myfunc ($arg1, $arg2) {
+     [..]
+  }
+  [..]
+}
+?>
+```
+
+解析如下：
+
+- 类使用 **class** 关键字后加上类名定义。
+- 类名后的一对大括号({})内可以定义变量和方法。
+- 类的变量使用 **var** 来声明, 变量也可以初始化值。
+- 函数定义类似 PHP 函数的定义，但函数只能通过该类及其实例化的对象访问。
